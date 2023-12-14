@@ -1,0 +1,41 @@
+stages:
+  - stats_analis
+  - secrets
+  - container_scan
+  - web_application_scan
+  - build_and_deploy
+
+
+stats_analis:
+  stage: stats_analis
+  script:
+    - npm install -g eslint
+    - eslint --init
+    - eslint .
+
+secrets:
+  stage: secrets
+  script:
+    - trufflehog --path ~/cacl/api-calc.py
+
+
+container_scan:
+  stage: container_scan
+  script:
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL api-calc:latest
+
+web_application_scan:
+  stage: web_application_scan
+  script:
+    - zap-baseline.py -t http://127.0.0.1:5000/addition -r report_addition.html
+    - zap-baseline.py -t http://127.0.0.1:5000/subtraction -r report_subtraction.html
+    - zap-baseline.py -t http://127.0.0.1:5000/multiplication -r report_multiplication.html
+    - zap-baseline.py -t http://127.0.0.1:5000/division -r report_division.html
+
+build_and_deploy:
+  stage: build_and_deploy
+  script:
+    - docker build -t ghcr.io/MarinaKubasova/api-calc:latest .
+    - docker stop api-calc || true
+    - docker rm api-calc || true
+    - docker run -d -p 5000:5000 --name api-calc ghcr.io/MarinaKubasoba/api-calc:latest
